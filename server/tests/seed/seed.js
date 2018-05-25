@@ -18,11 +18,11 @@ const users = [
 			
 		}]
 	},
-	{
+	{ 
 		_id: userTwoId,
 		email: 'netest@test.com',
 		password: 'userTwoPassword',
-		tokens: [{
+		tokens: [{ 
 			access: 'auth',
 			token: jwt.sign({_id: userTwoId, access: "auth"}, "abc123").toString()
 			
