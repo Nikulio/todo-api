@@ -5,19 +5,20 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const {ObjectID} = require("mongodb");
 
-var {mongoose} = require("./db/mongoose");
-var {Todo} = require("./models/todo");
-var {User} = require("./models/user");
-var {authenticate} = require("./middleware/authenticate");
+let {mongoose} = require("./db/mongoose");
+let {Todo} = require("./models/todo");
+let {User} = require("./models/user");
+let {authenticate} = require("./middleware/authenticate");
 
-var app = express();
+let app = express();
 const port = process.env.PORT;
 
 app.use(bodyParser.json());
 
-app.post("/todos", (req, res) => {
-	var todo = new Todo({
-		text: req.body.text
+app.post("/todos", authenticate, (req, res) => {
+	let todo = new Todo({
+		text: req.body.text,
+		_creator: req.user._id
 	});
 	
 	todo.save().then(
@@ -30,12 +31,10 @@ app.post("/todos", (req, res) => {
 	);
 });
 
-app.get("/", (req, res) => {
-	res.send("Nikita pidor");
-});
-
-app.get("/todos", (req, res) => {
-	Todo.find().then(
+app.get("/todos", authenticate, (req, res) => {
+	Todo.find({
+		_creator: req.user._id
+	}).then(
 		todos => {
 			res.send({todos});
 		},
@@ -46,7 +45,7 @@ app.get("/todos", (req, res) => {
 });
 
 app.get("/todos/:id", (req, res) => {
-	var id = req.params.id;
+	let id = req.params.id;
 	
 	if (!ObjectID.isValid(id)) {
 		return res.status(404).send();
@@ -64,7 +63,7 @@ app.get("/todos/:id", (req, res) => {
 });
 
 app.delete("/todos/:id", (req, res) => {
-	var id = req.params.id;
+	let id = req.params.id;
 	
 	if (!ObjectID.isValid(id)) {
 		return res.status(404).send();
@@ -84,8 +83,8 @@ app.delete("/todos/:id", (req, res) => {
 });
 
 app.patch("/todos/:id", (req, res) => {
-	var id = req.params.id;
-	var body = _.pick(req.body, ["text", "completed"]);
+	let id = req.params.id;
+	let body = _.pick(req.body, ["text", "completed"]);
 	
 	if (!ObjectID.isValid(id)) {
 		return res.status(404).send();
@@ -113,8 +112,8 @@ app.patch("/todos/:id", (req, res) => {
 
 // POST /users
 app.post("/users", (req, res) => {
-	var body = _.pick(req.body, ["email", "password"]);
-	var user = new User(body);
+	let body = _.pick(req.body, ["email", "password"]);
+	let user = new User(body);
 	user
 		.save()
 		.then(() => {
@@ -146,6 +145,16 @@ app.post("/users/login", (req, res) => {
 	}).catch(e => res.status(400).send(e));
 });
 
+
+// DELETE /users/me/token
+
+app.delete('/users/me/token', authenticate, (req, res) => {
+	req.user.removeToken(req.token).then(() => {
+		res.status(200).send()
+	}, () => {
+		res.status(400).send()
+	})
+})
 
 if (!module.parent) {
 	app.listen(port, () => {
